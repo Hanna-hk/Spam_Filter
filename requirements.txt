@@ -1,0 +1,13 @@
+pandas
+numpy
+nltk
+matplotlib
+seaborn
+kaggle
+scikit-learn
+wordcloud
+tensorflow
+keras-tuner
+dill
+Flask
+-e .
