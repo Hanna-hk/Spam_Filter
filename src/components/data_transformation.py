@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from src.exception import CustomException
 from typing import Tuple, Optional
 from src.logger import logging
+from src.utils import save_object
 
 import numpy as np
 import pandas as pd
@@ -18,13 +19,13 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import string
 
-#from src.first_ml_project.utils import save_object
 
 @dataclass
 class DataTransformationConfig:
     preprocessor_obj_file_path = os.path.join('artifacts', "preprocessor.pkl")
     tokenizer_obj_file_path = os.path.join('artifacts', "tokenizer.pkl")
     label_encoder_file_path = os.path.join('artifacts', "label_encoder.pkl")
+    scaler_file_path = os.path.join('artifacts', "scaler.pkl")
 
 class TextPreprocessor(BaseEstimator, TransformerMixin):
     def __init__(self, use_stemming: bool = True, remove_stopwords: bool = True):
@@ -115,12 +116,32 @@ class DataTransformation:
 
             logging.info("Obtaining preprocessing object")
 
-            preprocessing_obj = self.get_data_transformer_obj(train_df)
-            X_train, y_train = self._transform_features(train_df)
-            X_test, y_test = self._transform_features(test_df)
-            X_val, y_val = self._transform_features(val_df)
+            preprocessing_obj, tokenizer_obj, scaler_obj, label_encoder_obj = self.get_data_transformer_obj(train_df)
+            X_text_train, X_numerical_train, y_train = self._transform_features(train_df)
+            X_text_test, X_numerical_test, y_test = self._transform_features(test_df)
+            X_text_val, X_numerical_val, y_val = self._transform_features(val_df)
             logging.info("Data transformation completed successfully")
-            return (X_train, X_test, y_train, y_test, X_val, y_val,
+            logging.info(f"Saved preprocessing object")
+
+            save_object(
+                file_path = self.data_transformation_config.preprocessor_obj_file_path,
+                obj=preprocessing_obj
+            )
+            save_object(
+                file_path = self.data_transformation_config.tokenizer_obj_file_path,
+                obj=tokenizer_obj
+            )
+            save_object(
+                file_path = self.data_transformation_config.label_encoder_file_path,
+                obj=label_encoder_obj
+            )
+            save_object(
+                file_path = self.data_transformation_config.scaler_file_path,
+                obj=scaler_obj
+            )
+            return (X_text_train, X_numerical_train, y_train, 
+                    X_text_test, X_numerical_test, y_test, 
+                    X_text_val, X_numerical_val, y_val,
                    self.data_transformation_config.preprocessor_obj_file_path)
 
         except Exception as e:
@@ -137,10 +158,8 @@ class DataTransformation:
             X_numerical = self.numerical_extractor.transform(df)
             X_numerical = self.scaler.transform(X_numerical)
 
-            X_combined = np.concatenate([X_text_pad, X_numerical], axis=1)
-
             y = self.label_encoder.transform(df['Category'])
 
-            return X_combined, y
+            return X_text_pad, X_numerical, y
         except Exception as e:
             raise CustomException(e, sys)
